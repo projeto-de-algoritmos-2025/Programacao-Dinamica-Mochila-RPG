@@ -1,0 +1,6 @@
+[
+  { "name": "Espada Longa", "weight": 7, "value": 13, "image": "sword.jpg" },
+  { "name": "Escudo de Carvalho", "weight": 5, "value": 10, "image": "shield.jpg" },
+  { "name": "Poção de Cura", "weight": 2, "value": 4, "image": "potion.jpg" },
+  { "name": "Arco Élfico", "weight": 4, "value": 9, "image": "bow.png" }
+]
