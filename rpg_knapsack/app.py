@@ -111,7 +111,7 @@ class RPGKnapsackApp:
             ft.Text("⚔️ Arsenal de Tamriel", size=24, weight=ft.FontWeight.BOLD, font_family="serif"),
             
             ft.Container(
-                content=items_table, 
+                content=ft.Column([items_table], scroll=ft.ScrollMode.AUTO, expand=True),
                 border=ft.border.all(1, ft.Colors.GREY_400), 
                 border_radius=10,
                 height=300
