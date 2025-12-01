@@ -36,6 +36,25 @@ class RPGKnapsackApp:
             ]
         )
 
+        self.race_images = {
+            "nord": "nord.webp",
+            "orc": "orc.webp",
+            "wood_elf": "bosmer.webp",
+            "khajiit": "khajit.webp",
+            "imperial": "imperial.webp"
+        }
+
+        self.race_avatar = ft.Image(
+            src=f"/images/{self.race_images['nord']}", 
+            width=250,              
+            height=200,
+            fit=ft.ImageFit.COVER,
+            border_radius=ft.border_radius.all(15), 
+        )
+
+        # Atualiza `race_dropdown` para chamar handler quando mudar
+        self.race_dropdown.on_change = self.on_race_change
+
         self.results_column = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
 
         self.btn_dungeon = ft.ElevatedButton(
@@ -85,12 +104,10 @@ class RPGKnapsackApp:
     def build_ui(self):
         """Monta o layout principal da aplicação."""
         
-        # Cria a tabela usando os dados carregados
         items_table = self.create_items_table()
 
-        # Painel Esquerdo (Inputs e Tabela)
+        # Painel Esquerdo
         left_panel = ft.Column([
-            # ### <--- MUDANÇA: Título temático e fonte serifada
             ft.Text("⚔️ Arsenal de Tamriel", size=24, weight=ft.FontWeight.BOLD, font_family="serif"),
             
             ft.Container(
@@ -102,12 +119,11 @@ class RPGKnapsackApp:
             
             ft.Divider(),
             
-            # Linha de Controles
             ft.Row([
                 self.weight_input,
                 self.race_dropdown, 
                 ft.ElevatedButton(
-                    "Equipar", # Nome do botão mudou
+                    "Equipar", 
                     icon=ft.Icons.BACKPACK, 
                     on_click=self.on_calculate_click, 
                     bgcolor=ft.Colors.BLUE_800, 
@@ -123,7 +139,7 @@ class RPGKnapsackApp:
 
         ], scroll=ft.ScrollMode.AUTO, expand=True)
 
-        # Painel Direito (Resultados)
+        # Painel Direito
         right_panel = ft.Container(
             content=self.results_column,
             padding=10,
@@ -131,7 +147,6 @@ class RPGKnapsackApp:
             expand=True
         )
 
-        # Layout Principal (Divisão da tela)
         layout = ft.Row([
             ft.Container(left_panel, expand=6, padding=10),
             ft.Container(right_panel, expand=4, padding=10)
@@ -140,10 +155,8 @@ class RPGKnapsackApp:
         self.page.add(layout)
 
     def create_items_table(self):
-        """Gera a DataTable com base nos itens."""
         table_rows = []
         for item in self.items_data:
-            # ### <--- NOVO: Pegando stats para exibir na tabela
             stats = item.get("stats", {})
             atk = stats.get("attack", 0)
             defe = stats.get("defense", 0)
@@ -155,7 +168,6 @@ class RPGKnapsackApp:
                         ft.DataCell(ft.Text(item['name'])),
                         ft.DataCell(ft.Text(str(item['weight']))),
                         ft.DataCell(ft.Text(str(item['value']))),
-                        # ### <--- NOVO: Coluna extra mostrando ataque e defesa
                         ft.DataCell(ft.Text(f"⚔️{atk}    🛡️{defe}", size=12)),
                     ]
                 )
@@ -175,18 +187,15 @@ class RPGKnapsackApp:
         )
 
     def create_result_card(self, item, is_discarded=False):
-        """Cria card. Se is_discarded=True, deixa cinza/vermelho."""
         bg_color = ft.Colors.RED_50 if is_discarded else ft.Colors.WHITE
         text_color = ft.Colors.GREY if is_discarded else ft.Colors.BLACK
         
-        # ### <--- NOVO: Se o item é "Favorito" da raça (definido no game_utils), fica dourado
         if item.get("is_favorite") and not is_discarded:
             bg_color = ft.Colors.AMBER_50
             
         stats = item.get("stats", {})
         info_text = f"P: {item['weight']} | 💰 {item.get('real_value', item['value'])}"
         
-        # Mostra status de batalha se existirem
         if "attack" in stats:
             info_text += f" | ⚔️ {stats.get('attack',0)} | 🛡️ {stats.get('defense',0)}"
 
@@ -195,7 +204,13 @@ class RPGKnapsackApp:
             elevation=2 if not is_discarded else 0,
             content=ft.Container(
                 content=ft.Row([
-                    ft.Image(src=f"/images/{item['image']}", width=50, height=50, fit=ft.ImageFit.CONTAIN, opacity=0.5 if is_discarded else 1.0),
+                    ft.Image(
+                        src=f"/images/{item['image']}", 
+                        width=80,  # Mantendo o tamanho maior acordado
+                        height=80, 
+                        fit=ft.ImageFit.CONTAIN, 
+                        opacity=0.5 if is_discarded else 1.0
+                    ),
                     ft.Column([
                         ft.Text(item['name'], size=14, weight=ft.FontWeight.BOLD, color=text_color),
                         ft.Text(info_text, size=11, color=ft.Colors.GREY_700)
@@ -207,8 +222,26 @@ class RPGKnapsackApp:
             )
         )
 
+    def on_race_change(self, e):
+        """Handler para atualizar `race_avatar` quando a raça for alterada."""
+        selected = e.control.value if hasattr(e.control, "value") else None
+        if not selected:
+            return
+        
+        self.btn_dungeon.disabled = True
+        self.btn_dungeon.color = ft.Colors.GREY_600
+        
+        img = self.race_images.get(selected, "nord.webp")
+        
+        # self.race_avatar.src = f"/images/{img}"
+        
+        # Verifica se o objeto está montado na tela antes de dar update
+        if self.race_avatar.page:
+            self.race_avatar.update()
+            
+        self.btn_dungeon.update()
+
     def on_calculate_click(self, e):
-        """Evento de clique do botão Calcular."""
         try:
             if not self.weight_input.value:
                 raise ValueError("empty")
@@ -218,64 +251,82 @@ class RPGKnapsackApp:
             self.weight_input.update()
             return
 
-        # Limpar erro se houver sucesso na conversão
         self.weight_input.error_text = None
         self.weight_input.update()
 
         race = self.race_dropdown.value if self.race_dropdown.value else "empty"
-        
-        # altera o 'value dos itens baseado na raça
         processed_items = prepare_items_for_knapsack(self.items_data, race)
 
-        # usa os valores alterados por raça
         best_score, chosen, _ = knapsack(processed_items, max_w)
         
         self.current_backpack = chosen 
         self.btn_dungeon.disabled = False
-        self.btn_dungeon.color=ft.Colors.WHITE
+        self.btn_dungeon.color = ft.Colors.WHITE
 
-        # Limpa resultados anteriores
         self.results_column.controls.clear()
         
-        self.update_results_panel(best_score, chosen, title=f"Mochila ({race.capitalize()})")
+        self.update_results_panel(best_score, chosen, race_key=race, title=f"Inventário ({race.capitalize()})")
         self.page.update()
 
-    def update_results_panel(self, score, items, title="Resultado"):
+    # --- CORREÇÃO 3: Usar o self.race_avatar em vez de criar novo ---
+    def update_results_panel(self, score, items, race_key="nord", title="Resultado"):
         self.results_column.controls.clear()
         
-        # Calculando totais para exibir no resumo
+        race_img = self.race_images.get(race_key, "nord.webp")
+        
+        # Garante que a imagem está certa (caso o calculate seja chamado diretamente)
+        self.race_avatar.src = f"/images/{race_img}"
+
+        # Totais
         total_gold = sum(i.get('real_value', i['value']) for i in items)
         total_atk = sum(i.get('stats', {}).get('attack', 0) for i in items)
         total_def = sum(i.get('stats', {}).get('defense', 0) for i in items)
+        total_weight = sum(i['weight'] for i in items)
 
-        self.results_column.controls.append(
-            ft.Container(
-                content=ft.Column([
-                    ft.Text(title, size=20, weight=ft.FontWeight.BOLD),
-                    # Mostra "Score de Afinidade" em vez de Valor Total
-                    ft.Text(f"✨ Score de Afinidade: {score}", size=16, color=ft.Colors.BLUE_700),
-                    
-                    # Linha com ícones de Ouro, Ataque e Defesa totais
-                    ft.Row([
-                        ft.Text(f"💰 {total_gold}", color=ft.Colors.AMBER_800, weight=ft.FontWeight.BOLD),
-                        ft.Text(f"⚔️ {total_atk}", color=ft.Colors.RED_700, weight=ft.FontWeight.BOLD),
-                        ft.Text(f"🛡️ {total_def}", color=ft.Colors.BLUE_GREY_700, weight=ft.FontWeight.BOLD),
-                    ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                    
-                    ft.Text(f"🎒 Peso: {sum(i['weight'] for i in items)}kg", size=14),
-                ]),
-                padding=10, bgcolor=ft.Colors.BLUE_50, border_radius=10
-            )
+        # Container da Imagem (Reutilizando self.race_avatar)
+        avatar_section = ft.Container(
+            content=self.race_avatar, # <--- AQUI ESTÁ O SEGREDO
+            alignment=ft.alignment.center, 
+            padding=ft.padding.only(bottom=15)
         )
+
+        # Container de Informações
+        info_panel = ft.Container(
+            content=ft.Column([
+                ft.Column([
+                    ft.Text(title, size=20, weight=ft.FontWeight.BOLD),
+                    ft.Text(f"✨ Score de Afinidade: {score}", size=16, color=ft.Colors.BLUE_700),
+                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                
+                ft.Divider(color=ft.Colors.BLUE_200),
+
+                ft.Row([
+                    ft.Text(f"💰 {total_gold}", size=16, color=ft.Colors.AMBER_800, weight=ft.FontWeight.BOLD),
+                    ft.Text(f"⚔️ {total_atk}", size=16, color=ft.Colors.RED_700, weight=ft.FontWeight.BOLD),
+                    ft.Text(f"🛡️ {total_def}", size=16, color=ft.Colors.BLUE_GREY_700, weight=ft.FontWeight.BOLD),
+                    ft.Text(f"🎒 {total_weight}kg", size=16, weight=ft.FontWeight.BOLD),
+                ], alignment=ft.MainAxisAlignment.SPACE_EVENLY), 
+                
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+            
+            padding=15, 
+            bgcolor=ft.Colors.BLUE_50, 
+            border_radius=15,
+            border=ft.border.all(1, ft.Colors.BLUE_100)
+        )
+
+        self.results_column.controls.append(avatar_section)
+        self.results_column.controls.append(info_panel)
         
-        self.results_column.controls.append(ft.Text(f"Inventário ({len(items)}):", weight=ft.FontWeight.BOLD))
+        self.results_column.controls.append(ft.Container(height=10))
+        self.results_column.controls.append(ft.Text(f"Itens ({len(items)}):", weight=ft.FontWeight.BOLD))
+        
         for item in items:
             self.results_column.controls.append(self.create_result_card(item))
 
     def open_dungeon_modal(self, e):
         loot = self.dungeon_manager.generate_loot(quantity=3)
         
-        # Calcula o descarte ideal 
         raw_value = self.weight_input.value or "0"
         max_w = int(raw_value)
         race = self.race_dropdown.value if self.race_dropdown.value else "empty"
@@ -285,23 +336,18 @@ class RPGKnapsackApp:
             self.current_backpack, processed_loot, max_w
         )
         
-        # Itens encontrados no loot
         loot_display = ft.Column([ft.Text("🎁 Você encontrou:", weight=ft.FontWeight.BOLD)] + 
                                  [self.create_result_card(i) for i in loot])
         
-        # Itens mantidos
         kept_display = ft.Column([ft.Text("✅ Mantidos:", color=ft.Colors.GREEN)] + 
                                  [self.create_result_card(i) for i in kept], scroll=ft.ScrollMode.AUTO, height=400)
         
-        # Itens descartados
         discarded_display = ft.Column([ft.Text("🗑️ Descartados:", color=ft.Colors.RED)] + 
                                       [self.create_result_card(i, is_discarded=True) for i in discarded], scroll=ft.ScrollMode.AUTO, height=300)
 
-        # Atualiza a mochila principal com o resultado (caso a gnt feche o modal, já está salvo)
         self.current_backpack = kept
         self.update_results_panel(new_score, kept, title=f"Pós-Dungeon ({race.capitalize()})")
 
-        # Configurar o Modal
         dlg = ft.AlertDialog(
             title=ft.Text("Resultado da Exploração 🏔️⚔️🏔️"),
             content=ft.Container(
