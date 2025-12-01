@@ -1,4 +1,4 @@
-def knapsack(items, max_weight):
+def knapsack(items: list, max_weight: int) -> tuple[int, list, list]:
     n = len(items)
 
     # DP[i][w] = melhor valor usando itens até i com peso máximo w
@@ -12,8 +12,8 @@ def knapsack(items, max_weight):
         for w in range(max_weight + 1):
             if item_weight <= w:
                 dp[i][w] = max(
-                    dp[i-1][w],                     # não usar item
-                    dp[i-1][w - item_weight] + item_value  # usar item
+                    dp[i-1][w],                             # não usar item
+                    dp[i-1][w - item_weight] + item_value   # usar item
                 )
             else:
                 dp[i][w] = dp[i-1][w]
