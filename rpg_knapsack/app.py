@@ -1,6 +1,7 @@
 import flet as ft
 import json
 from knapsack import knapsack
+from dungeon import DungeonManager
 
 class RPGKnapsackApp:
     def __init__(self, page: ft.Page):
@@ -10,6 +11,8 @@ class RPGKnapsackApp:
         
         # Carregando os dados dos itens
         self.items_data = self.load_data()
+        self.dungeon_manager = DungeonManager(self.items_data) 
+        self.current_backpack = [] 
         
         # Inicializar Componentes de UI 
         self.weight_input = ft.TextField(
@@ -20,12 +23,21 @@ class RPGKnapsackApp:
         )
         self.results_column = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO)
 
+        self.btn_dungeon = ft.ElevatedButton(
+            "Explorar Dungeon (+ Loot)", 
+            icon=ft.Icons.FORT, # Ícone de castelo/forte
+            on_click=self.open_dungeon_modal,
+            bgcolor=ft.Colors.PURPLE_700,
+            color=ft.Colors.WHITE,
+            disabled=True # Só habilita depois de calcular a primeira mochila
+        )
+
         # Construindo a Interface
         self.build_ui()
 
     def setup_page(self):
         """Configurações iniciais da janela."""
-        self.page.title = "Mochila de RPG - Knapsack (OO Version)"
+        self.page.title = "Mochila de RPG - Knapsack"
         self.page.theme_mode = ft.ThemeMode.LIGHT
         self.page.padding = 20
         self.page.window.width = 1000
@@ -63,10 +75,14 @@ class RPGKnapsackApp:
                     icon=ft.Icons.CALCULATE, 
                     on_click=self.on_calculate_click, 
                     bgcolor=ft.Colors.BLUE_600, 
-                    color=ft.Colors.WHITE
+                    color=ft.Colors.WHITE,
                 )
+            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+            ft.Row([
+                self.btn_dungeon 
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
-        ], scroll=ft.ScrollMode.AUTO, expand=True)
+        ], scroll=ft.ScrollMode.AUTO, expand=True,
+        )
 
         # Painel Direito (Resultados)
         right_panel = ft.Container(
@@ -112,18 +128,24 @@ class RPGKnapsackApp:
             heading_row_color=ft.Colors.BLUE_50,
         )
 
-    def create_result_card(self, item):
-        """Cria um Card visual para um item escolhido."""
+    def create_result_card(self, item, is_discarded=False):
+        """Cria card. Se is_discarded=True, deixa cinza/vermelho."""
+        bg_color = ft.Colors.RED_50 if is_discarded else ft.Colors.WHITE
+        text_color = ft.Colors.GREY if is_discarded else ft.Colors.BLACK
+        icon = ft.Icons.DELETE_OUTLINE if is_discarded else None
+
         return ft.Card(
+            color=bg_color,
             content=ft.Container(
                 content=ft.Row([
-                    ft.Image(src=f"/images/{item['image']}", width=60, height=60, fit=ft.ImageFit.CONTAIN, border_radius=5),
+                    ft.Image(src=f"/images/{item['image']}", width=50, height=50, fit=ft.ImageFit.CONTAIN, opacity=0.5 if is_discarded else 1.0),
                     ft.Column([
-                        ft.Text(item['name'], size=16, weight=ft.FontWeight.BOLD),
-                        ft.Text(f"Peso: {item['weight']}kg | Valor: {item['value']}", size=12, color=ft.Colors.GREY_700)
-                    ], alignment=ft.MainAxisAlignment.CENTER),
+                        ft.Text(item['name'], size=14, weight=ft.FontWeight.BOLD, color=text_color),
+                        ft.Text(f"P: {item['weight']} | V: {item['value']}", size=12, color=ft.Colors.GREY_700)
+                    ], alignment=ft.MainAxisAlignment.CENTER, expand=True),
+                    ft.Icon(icon, color=ft.Colors.RED_400) if icon else ft.Container()
                 ]),
-                padding=10,
+                padding=5,
             )
         )
 
@@ -145,6 +167,10 @@ class RPGKnapsackApp:
         # Executa o algoritmo (lógica importada)
         best_value, chosen, _ = knapsack(self.items_data, max_w)
         
+        self.current_backpack = chosen 
+        
+        self.btn_dungeon.disabled = False
+
         # Limpa resultados anteriores
         self.results_column.controls.clear()
         
@@ -170,6 +196,75 @@ class RPGKnapsackApp:
         
         # Atualiza a página para mostrar as mudanças
         self.page.update()
+
+    def update_results_panel(self, value, items, title="Resultado"):
+        self.results_column.controls.clear()
+        
+        # Card de Resumo
+        self.results_column.controls.append(
+            ft.Container(
+                content=ft.Column([
+                    ft.Text(title, size=20, weight=ft.FontWeight.BOLD),
+                    ft.Text(f"💰 Valor Total: {value}", size=18, color=ft.Colors.GREEN_700),
+                    ft.Text(f"🎒 Peso Atual: {sum(i['weight'] for i in items)}kg", size=14),
+                ]),
+                padding=10, bgcolor=ft.Colors.GREEN_50, border_radius=10
+            )
+        )
+        
+        self.results_column.controls.append(ft.Text(f"Itens ({len(items)}):", weight=ft.FontWeight.BOLD))
+        for item in items:
+            self.results_column.controls.append(self.create_result_card(item))
+
+    def open_dungeon_modal(self, e):
+        # 1. Gerar Loot
+        loot = self.dungeon_manager.generate_loot(quantity=3)
+        
+        # 2. Calcular o Descarte Ideal (Lógica que você fez)
+        raw_value = self.weight_input.value or "0"
+        max_w = int(raw_value)
+        kept, discarded, new_value = self.dungeon_manager.discard_overweight(
+            self.current_backpack, loot, max_w
+        )
+        
+        # Itens Encontrados no loot
+        loot_display = ft.Column([ft.Text("🎁 Você encontrou:", weight=ft.FontWeight.BOLD)] + 
+                                 [self.create_result_card(i) for i in loot])
+        
+        # Itens Mantidos
+        kept_display = ft.Column([ft.Text("✅ Mantidos:", color=ft.Colors.GREEN)] + 
+                                 [self.create_result_card(i) for i in kept], scroll=ft.ScrollMode.AUTO, height=400)
+        
+        # Itens Descartados
+        discarded_display = ft.Column([ft.Text("🗑️ Descartados:", color=ft.Colors.RED)] + 
+                                      [self.create_result_card(i, is_discarded=True) for i in discarded], scroll=ft.ScrollMode.AUTO, height=300)
+
+        # Atualiza a mochila principal com o resultado (caso a gnt feche o modal, já está salvo)
+        self.current_backpack = kept
+        self.update_results_panel(new_value, kept, title="Mochila Pós-Dungeon")
+
+        # Configurar o Modal
+        dlg = ft.AlertDialog(
+            title=ft.Text("Resultado da Exploração 🏰"),
+            content=ft.Container(
+                width=900,
+                content=ft.Row([
+                    ft.Container(loot_display, expand=1, padding=5, bgcolor=ft.Colors.AMBER_50, border_radius=5),
+                    ft.VerticalDivider(),
+                    ft.Container(kept_display, expand=1),
+                    ft.VerticalDivider(),
+                    ft.Container(discarded_display, expand=1),
+                ], alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.START)
+            ),
+            actions=[
+                ft.TextButton("Continuar", on_click=lambda e: self.close_modal(e.control.parent))
+            ],
+        )
+        
+        self.page.open(dlg)
+
+    def close_modal(self, dlg):
+        self.page.close(dlg)
 
 def main(page: ft.Page):
     RPGKnapsackApp(page)
