@@ -30,22 +30,39 @@ Este projeto tem como objetivo desenvolver uma aplicação interativa que aprese
 
 A apresentação do projeto pode ser acessada [aqui](https://www.youtube.com/watch?v=lM9NoJa0Y-k).
 
-## Guia de Instalação
+## Guia de instalação 
 
 ### Pré-requisitos
 
 - Git (versão 2.40 ou superior);
-- Python (versão 3.11 ou superior);
+- Python (versão 3.12 ou superior);
+
+### Clonando o repositório
+
+- O primeiro passo é clonar o repositório do projeto do GitHub.
+
+```bash
+git clone https://github.com/projeto-de-algoritmos-2025/Programacao-Dinamica-Mochila-RPG.git
+
+cd Programacao-Dinamica-Mochila-RPG
+```
 
 ### Executando o projeto
 
-- Instale a dependência para iterface gráfica:
+- Recomendamos criar e ativar um ambiente virtual novo para o projeto. Para isso, utilize os comandos abaixo:
+
+```bash
+python -m venv env
+.\env\Scripts\activate
+```
+
+- Em seguida, instale as dependências:
 
 ```bash
 pip install flet
 ```
 
-- Em seguida,execute o comando:
+- Após instalar as dependências, execute o comando a partir da raiz do projeto (`rpg_knapsack`):
 
 ```bash
 python app.py

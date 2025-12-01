@@ -1,6 +1,7 @@
 def calculate_item_score(item, race_key):
     """
     Calcula o valor de utilidade baseado na raça.
+    Acrescenta influência do value original para evitar escolhas estranhas.
     """
     stats = item.get("stats", {"attack": 0, "defense": 0})
     base_value = item.get("value", 0)
@@ -10,43 +11,45 @@ def calculate_item_score(item, race_key):
     score = 0
     
     if race_key == "orc":
-        # Orcs => dano bruto e armas corpo a corpo 
-        score = (stats.get("attack", 0) * 4) + (stats.get("defense", 0) * 1)
-        if "espada" in name: 
-            score += 30  
-        if "escudo" in name:
-            score += 20  
+        # Orcs => preferência forte por dano corpo-a-corpo (espadas)
+        # base ponderada por ataque 
+        score = (stats.get("attack", 0) * 6) + (stats.get("defense", 0) * 1)
+        # dar um bônus maior para espadas (preferência clara por melee)
+        if "espada" in name or "sword" in name:
+            score += 90
+        # penaliza arcos para orcs
+        if "arco" in name or "bow" in name:
+            score -= 90
+        # incluir parte do valor base, mas com peso menor para não sobrepor os stats
+        score += base_value * 0.1
             
     elif race_key == "nord":
-        # Nords => +resistentes e usam escudos
         score = (stats.get("defense", 0) * 4) + (stats.get("attack", 0) * 1)
         if "escudo" in name or "nordico" in name or "nórdico" in name:
-            score += 25  # Grande preferência cultural
+            score += 25
         if "espada" in name:
             score += 20
+        score += base_value * 0.15
             
     elif race_key == "wood_elf":
-        # Bosmer são os melhores arqueiros
         if "arco" in name:
-            score = base_value + 50 + (stats.get("attack", 0) * 3)
+            score = base_value + 60 + (stats.get("attack", 0) * 3)
         else:
-            # Desvalorizam itens pesados que não sejam arcos
-            score = base_value * 0.5 
+            score = base_value * 0.4 
             
     elif race_key == "khajiit":
-        # Khajiit tem mercadorias se você tem moedas. Só importa o ouro.
         score = base_value * 2 
         
     elif race_key == "imperial":
-        # Imperiais são equilibrados => meh
         score = base_value + stats.get("attack", 0) + stats.get("defense", 0)
 
-    # Poções sempre são úteis, independentemente da raça
+    # Poções sempre são úteis independentemente da raça
     if item_type == "consumable" or "poção" in name:
         score += 15
 
-    # int pro Knapsack não quebrar
-    return int(score)
+    # Garantir não-negatividade e inteiro para o knapsack
+    final = max(int(score), 0)
+    return final
 
 def prepare_items_for_knapsack(items, race_key):
     """
