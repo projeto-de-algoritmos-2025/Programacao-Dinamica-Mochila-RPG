@@ -28,7 +28,7 @@ Este projeto tem como objetivo desenvolver uma aplicação interativa que aprese
 
 ## Apresentação
 
-A apresentação do projeto pode ser acessada [aqui](https://www.youtube.com/watch?v=lM9NoJa0Y-k).
+A apresentação do projeto pode ser acessada [aqui](https://youtu.be/Bf4Q577yiDg).
 
 ## Guia de instalação 
 
@@ -66,4 +66,5 @@ pip install flet
 
 ```bash
 python app.py
+
 ```
